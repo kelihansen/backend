@@ -17,26 +17,27 @@ describe.only('Profile API', () => {
   let sansaId = null;
 
   before(() => {
-    return Promise.all([
-      request.post('/api/auth/signup')
-        .send({ lastName: 'Snow', firstName: 'Jon', email: 'jon@thewall.com', password: 'honor'})
-        .then(({ body }) => {
-          token = body.token;
-          jonId = jwt.decode(token).id;
-        }),
-      request.post('/api/auth/signup')
-        .send({email: 'dany@dragons.com', firstName: 'Dany', lastName: 'Targaryan', password: 'dragons'})
-        .then(({ body }) => {
-          tokenDany = body.token;
-          danyId = jwt.decode(tokenDany).id;
-        }),
-      request.post('/api/auth/signup')
-        .send({email: 'sansa@winterfell.com', firstName: 'Sansa', lastName: 'Stark', password: 'whyme'})
-        .then(({ body }) => {
-          tokenSansa = body.token;
-          sansaId = jwt.decode(tokenSansa).id;
-        })
-    ]);
+    const users = [
+      { firstName: 'Jon', lastName: 'Snow', email: 'jon@thewall.com', password: 'honor'},
+      { firstName: 'Dany', lastName: 'Targaryan', email: 'dany@dragons.com', password: 'dragons' },
+      { firstName: 'Sansa', lastName: 'Stark', email: 'sansa@winterfell.com', password: 'whyme'}
+    ];
+    
+    return Promise.all(
+      users.map(user => request
+        .post('/api/auth/signup')
+        .send(user)
+        .then(({ body: { token } }) => ({ token, id: jwt.decode(token).id }))
+      )
+    )
+      .then(([ jon, dany, sansa ]) => {
+        token = jon.token;
+        jonId = jon.id;
+        tokenDany = dany.token;
+        danyId = dany.id;
+        tokenSansa = sansa.token;
+        sansaId = sansa.id;
+      });
   });
 
   let shareableMeet = {
