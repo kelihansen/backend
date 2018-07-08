@@ -217,7 +217,6 @@ describe.only('Me API', () => {
     return request.get('/api/me/feed')
       .set('Authorization', token)
       .then(({ body }) => {
-        console.log(body);
         assert.equal(body.length, 1);
         assert.equal(body[0].owner._id, danyId);
       });
