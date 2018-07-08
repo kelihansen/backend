@@ -2,10 +2,10 @@
 
 Designed to support Together, an app for strengthening friendships.
 
-Find the deployed app: https://together-alchemy.herokuapp.com\
+Find the deployed app: https://together-alchemy.herokuapp.com  
 Find the front-end code: https://github.com/kelihansen/friends-frontend
 
-This code represents Keli Hansen's continued work on the [Alchemy Code Lab](https://www.alchemycodelab.com) final project found at https://github.com/eighthnote.
+This project orginated as the [Alchemy Code Lab](https://www.alchemycodelab.com) final project found at https://github.com/eighthnote.
 
 ## Requirements
 
