@@ -1,29 +1,29 @@
 {
-  "name": "backend",
+  "name": "Together: Back End",
   "version": "1.0.0",
-  "description": "Server for friendship app",
+  "description": "An App for Strengthening Friendships",
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
     "pretest": "npm run lint",
     "test": "npm run mocha",
     "mocha": "mocha --recursive",
-    "test:dev": "nodemon --exec npm run mocha",
+    "test:watch": "nodemon --exec npm run mocha",
     "test:unit": "nodemon --exec npm run mocha -- ./test/unit",
     "test:e2e": "nodemon --exec npm run mocha -- ./test/e2e",
     "start": "node server.js",
-    "start:dev": "nodemon server.js"
+    "start:watch": "nodemon server.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eighthnote/backend.git"
+    "url": "git+https://github.com/kelihansen/friends-frontend.git"
   },
-  "author": "Victor Bofill <victorm.bofill@gmail.com>, Keli Hansen, Katlyn Tucker",
+  "author": "Keli Hansen",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/eighthnote/backend/issues"
+    "url": "https://github.com/kelihansen/friends-frontend/issues"
   },
-  "homepage": "https://github.com/eighthnote/backend#readme",
+  "homepage": "https://github.com/kelihansen/friends-frontend#readme",
   "devDependencies": {
     "chai": "^4.1.2",
     "chai-http": "^4.0.0",

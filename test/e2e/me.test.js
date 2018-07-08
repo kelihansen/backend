@@ -3,7 +3,7 @@ const request = require('./request');
 const { dropCollection } = require('./db');
 const jwt = require('jsonwebtoken');
 
-describe.only('Profile API', () => {
+describe.only('Me API', () => {
   before(() => dropCollection('users'));
   before(() => dropCollection('shareables'));
   before(() => dropCollection('accounts'));
@@ -17,91 +17,79 @@ describe.only('Profile API', () => {
   let sansaId = null;
 
   before(() => {
-    return Promise.all([
-      request.post('/api/auth/signup')
-        .send({ lastName: 'Snow', firstName: 'Jon', email: 'jon@thewall.com', password: 'honor'})
-        .then(({ body }) => {
-          token = body.token;
-          jonId = jwt.decode(token).id;
-        }),
-      request.post('/api/auth/signup')
-        .send({email: 'dany@dragons.com', firstName: 'Dany', lastName: 'Targaryan', password: 'dragons'})
-        .then(({ body }) => {
-          tokenDany = body.token;
-          danyId = jwt.decode(tokenDany).id;
-        }),
-      request.post('/api/auth/signup')
-        .send({email: 'sansa@winterfell.com', firstName: 'Sansa', lastName: 'Stark', password: 'whyme'})
-        .then(({ body }) => {
-          tokenSansa = body.token;
-          sansaId = jwt.decode(tokenSansa).id;
-        })
-    ]);
+    const users = [
+      { firstName: 'Jon', lastName: 'Snow', email: 'jon@thewall.com', password: 'honor'},
+      { firstName: 'Dany', lastName: 'Targaryan', email: 'dany@dragons.com', password: 'dragons' },
+      { firstName: 'Sansa', lastName: 'Stark', email: 'sansa@winterfell.com', password: 'whyme'}
+    ];
+    
+    return Promise.all(
+      users.map(user => request
+        .post('/api/auth/signup')
+        .send(user)
+        .then(({ body: { token } }) => ({ token, id: jwt.decode(token).id }))
+      )
+    )
+      .then(([ jon, dany, sansa ]) => {
+        token = jon.token;
+        jonId = jon.id;
+        tokenDany = dany.token;
+        danyId = dany.id;
+        tokenSansa = sansa.token;
+        sansaId = sansa.id;
+      });
   });
 
   let shareableMeet = {
-    name:  'Meet for the first time',
-    priority: 2,
-    groupSize: 2,
-    participants: [],
-    date: new Date,
-    expiration: null,
-    confirmed: true,
-    archived: false,
-    repeats: null,
+    description:  'Meet for the first time',
+    urgent: true,
+    expiration: new Date,
     type: 'requesting'
   };
 
   let shareableRule = {
-    name:  'Take everything over',
-    priority: 2,
-    groupSize: 2,
-    participants: [],
-    date: new Date,
-    expiration: null,
-    confirmed: true,
-    archived: false,
-    repeats: null,
+    description:  'Take everything over',
+    urgent: true,
     type: 'giving'
   };
 
   let shareableGetHome = {
-    name:  'Get back to Winterfell',
-    priority: 2,
-    groupSize: 2,
-    participants: [],
-    date: new Date,
-    expiration: null,
-    confirmed: true,
-    archived: false,
-    repeats: null,
-    type: 'plans'
+    description:  'Get back to Winterfell',
+    urgent: true,
+    type: 'requesting'
   };
 
   let shareableEatASandwich = {
-    name:  'Eat a sandwich',
-    priority: 1
+    description:  'Eat a sandwich',
+    type: 'giving'
   };
 
   before(() => {
     return Promise.all([
-      request.post('/api/profile/shareables')
+      request.post('/api/me/shareables')
         .set('Authorization', tokenDany)
         .send(shareableRule)
         .then(({ body }) => {
           shareableRule._id = body._id;
+          shareableRule.owner = danyId;
         }),
-      request.post('/api/profile/shareables')
+      request.post('/api/me/shareables')
         .set('Authorization', tokenSansa)
-        .send(shareableGetHome),
-      request.post('/api/profile/shareables')
+        .send(shareableGetHome)
+        .then(() => {
+          shareableGetHome.owner = sansaId;
+        }),
+      request.post('/api/me/shareables')
         .set('Authorization', tokenSansa)
         .send(shareableEatASandwich)
+        .then(() => {
+          shareableEatASandwich.owner = sansaId;
+        }),
     ]);
   });
 
   it('Retrieves a user\'s profile by id', () => {
-    return request.get('/api/profile')
+    return request.get('/api/me')
       .set('Authorization', token)
       .then(({ body }) => {
         assert.equal(body.__v, 0);
@@ -111,7 +99,7 @@ describe.only('Profile API', () => {
   });
 
   it('Updates own profile information', () => {
-    return request.put('/api/profile')
+    return request.put('/api/me')
       .set('Authorization', token)
       .send({ lastName: 'Targaryen' })
       .then(({ body }) => {
@@ -120,7 +108,7 @@ describe.only('Profile API', () => {
   });
 
   it('Adds a friend request', () => {
-    return request.put('/api/profile/friends')
+    return request.put('/api/me/friend-requests')
       .set('Authorization', token)
       .send({email: 'dany@dragons.com'})
       .then(({ body }) => {
@@ -129,11 +117,11 @@ describe.only('Profile API', () => {
   });
 
   it('Can\'t duplicate a friend request', () => {
-    return request.put('/api/profile/friends')
+    return request.put('/api/me/friend-requests')
       .set('Authorization', token)
       .send({email: 'dany@dragons.com'})
       .then(() => {
-        return request.get('/api/profile')
+        return request.get('/api/me')
           .set('Authorization', tokenDany);
       })
       .then(({ body }) => {
@@ -142,7 +130,7 @@ describe.only('Profile API', () => {
   });
 
   it('Can\'t send self a friend request', () => {
-    return request.put('/api/profile/friends')
+    return request.put('/api/me/friend-requests')
       .set('Authorization', token)
       .send({email: 'jon@thewall.com'})
       .then(response => {
@@ -150,18 +138,18 @@ describe.only('Profile API', () => {
         assert.include(response.body.error,  'yourself');
       });
   });
-
-  it('Adds a pending friend', () => {
-    return request.put(`/api/profile/friends/confirm/${jonId}`)
+  
+  it('Confirms a pending friend', () => {
+    return request.put(`/api/me/friends/${jonId}`)
       .set('Authorization', tokenDany)
       .then(({ body }) => {
         assert.equal(body.friends.length, 1);
         assert.equal(body.pendingFriends.length, 0);
       });
   });
-
+  
   it('Can\'t add an already friend', () => {
-    return request.put('/api/profile/friends')
+    return request.put('/api/me/friend-requests')
       .set('Authorization', token)
       .send({email: 'dany@dragons.com'})
       .then(response => {
@@ -171,7 +159,7 @@ describe.only('Profile API', () => {
   });
 
   it('Populates a friend list', () => {
-    return request.get('/api/profile/friends')
+    return request.get('/api/me/friends')
       .set('Authorization', token)
       .then(({ body }) => {
         assert.ok(body.friends);
@@ -180,7 +168,7 @@ describe.only('Profile API', () => {
   });
 
   it('Retrieves a single friend\'s profile', () => {
-    return request.get(`/api/profile/friends/${danyId}`)
+    return request.get(`/api/me/friends/${danyId}`)
       .set('Authorization', token)
       .then(({ body }) => {
         assert.equal(body.firstName, 'Dany');
@@ -189,7 +177,7 @@ describe.only('Profile API', () => {
   });
 
   it('Will not retrieve a profile if not friends', () => {
-    return request.get(`/api/profile/friends/${sansaId}`)
+    return request.get(`/api/me/friends/${sansaId}`)
       .set('Authorization', token)
       .then(response => {
         assert.equal(response.status, 403);
@@ -198,7 +186,7 @@ describe.only('Profile API', () => {
   });
 
   it('Saves a new shareable', () => {
-    return request.post('/api/profile/shareables')
+    return request.post('/api/me/shareables')
       .set('Authorization', token)
       .send(shareableMeet)
       .then(({ body }) => {
@@ -208,38 +196,39 @@ describe.only('Profile API', () => {
   });
 
   it('Gets all personal shareables on a list', () => {
-    return request.get('/api/profile/shareables')
+    return request.get('/api/me/shareables')
       .set('Authorization', token)
       .then(({ body }) => {
-        assert.equal(body[0].name, 'Meet for the first time');
+        assert.equal(body[0].description, 'Meet for the first time');
       });
   });
 
   it('Updates an owned shareable', () => {
-    const oldDate = shareableMeet.date;
-    return request.put(`/api/profile/shareables/${shareableMeet._id}`)
+    const oldDate = shareableMeet.expiration;
+    return request.put(`/api/me/shareables/${shareableMeet._id}`)
       .set('Authorization', token)
-      .send({ date: new Date })
+      .send({ expiration: new Date })
       .then(({ body }) => {
-        assert.notEqual(oldDate, body.date);
+        assert.notEqual(oldDate, body.expiration);
       });
   });
 
   it('Retrieves all feed shareables', () => {
-    return request.get('/api/profile/feed')
+    return request.get('/api/me/feed')
       .set('Authorization', token)
       .then(({ body }) => {
+        console.log(body);
         assert.equal(body.length, 1);
-        assert.equal(body[0].ownerId, danyId);
+        assert.equal(body[0].owner._id, danyId);
       });
   });
 
   it('Deletes a shareable', () => {
-    return request.delete(`/api/profile/shareables/${shareableMeet._id}`)
+    return request.delete(`/api/me/shareables/${shareableMeet._id}`)
       .set('Authorization', token)
       .then(({ body }) => {
         assert.ok(body.deleted);
-        return request.get('/api/profile/shareables')
+        return request.get('/api/me/shareables')
           .set('Authorization', token);
       })
       .then(({ body }) => {
@@ -248,26 +237,14 @@ describe.only('Profile API', () => {
   });
 
   it('Deletes a friend', () => {
-    return request.delete(`/api/profile/friends/${danyId}`)
+    return request.delete(`/api/me/friends/${danyId}`)
       .set('Authorization', token)
       .then(() => {
-        return request.get('/api/profile')
+        return request.get('/api/me')
           .set('Authorization', token);
       })
       .then(({ body }) => {
         assert.equal(body.friends.length, 0);
-      });
-  });
-
-  it('Deletes a profile', () => {
-    return request.delete('/api/profile')
-      .set('Authorization', token)
-      .then(() => {
-        return request.get('/api/profile')
-          .set('Authorization', token);
-      })
-      .then(({ body }) => {
-        assert.notExists(body);
       });
   });
 });

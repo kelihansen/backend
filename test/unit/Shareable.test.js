@@ -1,15 +1,13 @@
 const { assert } = require('chai');
 const Plan = require('../../lib/models/Shareable');
+const { Types } = require('mongoose');
 
 describe('Shareable model test', () => {
   it('Valid and good model', () => {
     const data = {
-      name:  'Get coffee',
-      priority: 0,
-      groupSize: 3,
-      confirmed: false,
-      participants: [],
-      repeats: null
+      description:  'Get coffee',
+      type: 'giving',
+      owner: Types.ObjectId()
     };
 
     const plan = new Plan(data);
